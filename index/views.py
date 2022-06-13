@@ -287,3 +287,6 @@ class MembersStatistic(APIView):
         student_count = students.count()
         sponsor_count = sponsors.count()
         return Response({"students": student_count, "sponsors": sponsor_count}, status=status.HTTP_200_OK)
+
+
+

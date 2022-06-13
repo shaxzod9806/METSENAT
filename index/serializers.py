@@ -9,8 +9,6 @@ class StudentSerializer(serializers.ModelSerializer):
 
 
 class SponsorSerializer(serializers.ModelSerializer):
-    # date = serializers.DateField(format="%Y-%m-%d")
-
     class Meta:
         model = Sponsor
         fields = ('name',

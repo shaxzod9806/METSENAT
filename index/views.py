@@ -3,9 +3,8 @@ from django.http import HttpResponse
 from .models import Student, Sponsor, OTM
 from .serializers import StudentSerializer, SponsorSerializer, OTMSerializer
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, generics
 from rest_framework.views import APIView
-from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg.views import get_schema_view
@@ -287,6 +286,3 @@ class MembersStatistic(APIView):
         student_count = students.count()
         sponsor_count = sponsors.count()
         return Response({"students": student_count, "sponsors": sponsor_count}, status=status.HTTP_200_OK)
-
-
-

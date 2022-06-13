@@ -26,7 +26,7 @@ class Sponsor(models.Model):
     name = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=13)
     sponsorship_amount = models.FloatField(null=True, blank=True)
-    current_balance = models.FloatField(null=True, blank=True,default=sponsorship_amount)
+    current_balance = models.FloatField(null=True, blank=True, default=None)
     payment_type = models.PositiveSmallIntegerField(choices=TYPE_PAYMENT, default=4)
     sponsor_type = models.PositiveSmallIntegerField(choices=TYPE_SPONSOR, default=2)
     company_name = models.CharField(max_length=100, default="not_legal_entity")  # it is same with extend
@@ -56,7 +56,7 @@ class Student(models.Model):
     name = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=13)
     contract_amount = models.FloatField()
-    current_balance = models.FloatField(default=0)
+    current_balance = models.FloatField(null=True, blank=True, default=None)
     type_student = models.CharField(choices=TYPE_STUDENT, default='bachelor', max_length=20)
     OTM = models.ForeignKey(OTM, on_delete=models.CASCADE)
     sponsor = models.ManyToManyField(Sponsor, null=True, blank=True)

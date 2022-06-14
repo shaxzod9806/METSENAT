@@ -15,4 +15,4 @@ uritemplate==4.1.1
 Pillow==9.1.1
 urllib3==1.26.9
 django_filter
-psycopg2>=2.8
+psycopg2-binary

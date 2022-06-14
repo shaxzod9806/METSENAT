@@ -59,16 +59,17 @@ token = openapi.Parameter(
 otm_id = openapi.Parameter('otm_id', in_=openapi.IN_QUERY, description="otm_id",
                            type=openapi.TYPE_STRING)
 
+student_id = openapi.Parameter('student_id', in_=openapi.IN_QUERY, description="student_id",
+                               type=openapi.TYPE_INTEGER)
+sponsor_id = openapi.Parameter('sponsor_id', in_=openapi.IN_QUERY, description="sponsor_id",
+                               type=openapi.TYPE_INTEGER)
+
 
 class StudentAPIView(APIView, PaginationHandlerMixin):
     permission_classes = [IsAuthenticated, IsAdminUser]
     pagination_class = BasicPagination
     serializer_class = StudentSerializer
     parser_classes = (MultiPartParser, FormParser)
-
-    student_id = openapi.Parameter('student_id', in_=openapi.IN_FORM, description="student_id",
-                                   type=openapi.TYPE_STRING)
-
     type_id = openapi.Parameter('type_student', in_=openapi.IN_QUERY, description="type_student",
                                 type=openapi.TYPE_STRING)
 
@@ -95,12 +96,12 @@ class StudentAPIView(APIView, PaginationHandlerMixin):
     @swagger_auto_schema(manual_parameters=[token], parser_classes=parser_classes,
                          request_body=StudentSerializer)
     def post(self, request):
+        request.data._mutable = True
         data = request.data
-
         sponsor = Sponsor.objects.get(id=data['sponsor'])
         sponsor_b = sponsor.current_balance
-        student_b = data['current_balance']
-        contract_b = data['contract_balance']
+        student_b = float(data['current_balance'])
+        contract_b = float(data['contract_amount'])
 
         # if sponsor has money and student has not enough money
         if sponsor_b > 0 and student_b < contract_b:
@@ -109,6 +110,7 @@ class StudentAPIView(APIView, PaginationHandlerMixin):
             if sponsor_b >= contract_b - student_b:
                 sponsor.current_balance = sponsor_b - (contract_b - student_b)
                 sponsor.save()
+                print(student_b + sponsor_b)
                 data['current_balance'] = student_b + sponsor_b
             elif sponsor_b == 0:
                 return Response({"message": "Sponsor has no enough money"}, status=status.HTTP_400_BAD_REQUEST)
@@ -117,6 +119,7 @@ class StudentAPIView(APIView, PaginationHandlerMixin):
             else:
                 sponsor.current_balance = 0
                 data['current_balance'] = student_b + sponsor_b
+        request.data._mutable = False
         serializer = StudentSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -125,10 +128,11 @@ class StudentAPIView(APIView, PaginationHandlerMixin):
             return Response(serializer.errors)
 
     @swagger_auto_schema(manual_parameters=[token, student_id], parser_classes=parser_classes,
-                         serializer_class=serializer_class)
+                         request_body=StudentSerializer)
     def put(self, request):
         student_id = request.data["student_id"]
         student = Student.objects.get(id=student_id)
+
         serializer = StudentSerializer(student, data=request.data, many=False)
         if serializer.is_valid():
             serializer.save()
@@ -142,6 +146,22 @@ class StudentAPIView(APIView, PaginationHandlerMixin):
         student = Student.objects.get(id=student_id)
         student.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# get one student
+class SingleStudentAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    serializer_class = StudentSerializer
+
+    @swagger_auto_schema(manual_parameters=[token, student_id])
+    def get(self, request):
+        student_id = request.query_params.get('student_id')
+        student = Student.objects.get(id=student_id)
+        if student is not None:
+            serializer = StudentSerializer(student, many=False)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"message": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 # class SponsorAPIView(generics.ListCreateAPIView, MultipleFieldLookupMixin, ):
@@ -205,6 +225,20 @@ class SponsorAPIView(APIView, PaginationHandlerMixin):
             return Response(serializer.data)
         else:
             return Response(serializer.errors)
+
+
+class SingleSponsorAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    @swagger_auto_schema(manual_parameters=[token, sponsor_id])
+    def get(self, request):
+        sponsor_id = request.query_params.get('sponsor_id')
+        sponsor = Sponsor.objects.get(id=sponsor_id)
+        if sponsor is not None:
+            serializer = SponsorSerializer(sponsor, many=False, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"message": "Sponsor not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 class SponsorRetrieveUpdateDestroyAPIView(generics.UpdateAPIView, generics.DestroyAPIView):

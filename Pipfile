@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 django = "==4.0.5"
 markupsafe = "==2.1.1"
-django-filter = "*"
+django-filter = "==21.1"
 
 [dev-packages]
 

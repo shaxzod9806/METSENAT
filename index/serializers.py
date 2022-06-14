@@ -9,6 +9,8 @@ class StudentSerializer(serializers.ModelSerializer):
 
 
 class SponsorSerializer(serializers.ModelSerializer):
+    students = serializers.SerializerMethodField('get_students')
+
     class Meta:
         model = Sponsor
         fields = ('name',
@@ -21,7 +23,16 @@ class SponsorSerializer(serializers.ModelSerializer):
                   'application_status',
                   'created_at',
                   'updated_at',
-                )
+                  'students',
+                  )
+
+    def get_students(self, obj):
+        print(obj)
+        students = [{'id': student.id, 'name': student.name} for student in Student.objects.filter(sponsor=obj.id)]
+        # students = Student.objects.filter(sponsor=obj.id)
+        # serializers = StudentSerializer(students, many=True)
+
+        return students
 
 
 class OTMSerializer(serializers.ModelSerializer):

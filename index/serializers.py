@@ -29,9 +29,6 @@ class SponsorSerializer(serializers.ModelSerializer):
     def get_students(self, obj):
         print(obj)
         students = [{'id': student.id, 'name': student.name} for student in Student.objects.filter(sponsor=obj.id)]
-        # students = Student.objects.filter(sponsor=obj.id)
-        # serializers = StudentSerializer(students, many=True)
-
         return students
 
 

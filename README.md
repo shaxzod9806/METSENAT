@@ -24,7 +24,7 @@ DB_HOST = localhost
 # Database port
 DB_PORT = 5432
 # Debug option(For Development process put True, for production level put False)
-DEBUG = True
+# DEBUG = True
 
 ```
 

@@ -3,8 +3,11 @@ from .views import StudentAPIView, SponsorAPIView, SponsorRetrieveUpdateDestroyA
     MyObtainTokenPairView, MembersStatistic, SingleStudentAPIView, SingleSponsorAPIView
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from rest_framework.routers import DefaultRouter
+from .views import StudentViewset
+
 urlpatterns = [
-    path('StudentAPI/', StudentAPIView.as_view(), name="student_api"),
+    # path('StudentAPI/', StudentAPIView.as_view(), name="student_api"),
     path('SingleStudentAPIView', SingleStudentAPIView.as_view(), name="SingleStudentAPIView"),
     path('SponsorFilter/', SponsorAPIView.as_view(), name="sponsor_api"),
     path('Sponsor/', SponsorRetrieveUpdateDestroyAPIView.as_view()),
@@ -16,3 +19,7 @@ urlpatterns = [
     path('MembersStatistic', MembersStatistic.as_view(), name='members_statistic')
 
 ]
+
+router = DefaultRouter()
+router.register(r'students',StudentViewset,basename="student")
+urlpatterns+=router.urls

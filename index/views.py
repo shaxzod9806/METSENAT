@@ -3,7 +3,7 @@ from django.http import HttpResponse
 from .models import Student, Sponsor, OTM
 from .serializers import StudentSerializer, SponsorSerializer, OTMSerializer
 from rest_framework.response import Response
-from rest_framework import status, generics
+from rest_framework import status, generics, viewsets
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from drf_yasg.utils import swagger_auto_schema
@@ -64,106 +64,122 @@ student_id = openapi.Parameter('student_id', in_=openapi.IN_QUERY, description="
 sponsor_id = openapi.Parameter('sponsor_id', in_=openapi.IN_QUERY, description="sponsor_id",
                                type=openapi.TYPE_INTEGER)
 
-
-class StudentAPIView(APIView, PaginationHandlerMixin):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    pagination_class = BasicPagination
-    serializer_class = StudentSerializer
-    parser_classes = (MultiPartParser, FormParser)
-    type_id = openapi.Parameter('type_student', in_=openapi.IN_QUERY, description="type_student",
-                                type=openapi.TYPE_STRING)
-
-    @swagger_auto_schema(manual_parameters=[token, type_id, otm_id])
-    def get(self, request):
-        type_student = request.query_params.get('type_student')
-        otm_id = request.query_params.get('otm_id')
-        print("type_student: ", type_student)
-        student = Student.objects.all()
-        if type_student and otm_id is not None:
-            student = Student.objects.filter(type_student=type_student, OTM=otm_id)
-        elif type_student is not None:
-            student = Student.objects.filter(type_student=type_student)
-        elif otm_id is not None:
-            student = Student.objects.filter(OTM=otm_id)
-        page = self.paginate_queryset(student)
-        serializer = StudentSerializer(page, many=True, context={"request": request})
-        if page is not None:
-            serializer = self.get_paginated_response(StudentSerializer(page, many=True).data)
-        else:
-            serializer = self.get_paginated_response(self.serializer_class(page, many=True).data)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    @swagger_auto_schema(manual_parameters=[token], parser_classes=parser_classes,
-                         request_body=StudentSerializer)
-    def post(self, request):
-        request.data._mutable = True
-        data = request.data
-        sponsor = Sponsor.objects.get(id=data['sponsor'])
-        sponsor_b = sponsor.current_balance
-        student_b = float(data['current_balance'])
-        contract_b = float(data['contract_amount'])
-
-        # if sponsor has money and student has not enough money
-        if sponsor_b > 0 and student_b < contract_b:
-
-            # if sponsor has not enough money to pay student
-            if sponsor_b >= contract_b - student_b:
-                sponsor.current_balance = sponsor_b - (contract_b - student_b)
-                sponsor.save()
-                print(student_b + sponsor_b)
-                data['current_balance'] = student_b + sponsor_b
-            elif sponsor_b == 0:
-                return Response({"message": "Sponsor has no enough money"}, status=status.HTTP_400_BAD_REQUEST)
-            elif contract_b <= data['current_balance']:
-                return Response({"message": "Student has enough money"}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                sponsor.current_balance = 0
-                data['current_balance'] = student_b + sponsor_b
-        request.data._mutable = False
-        serializer = StudentSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        else:
-            return Response(serializer.errors)
-
-    @swagger_auto_schema(manual_parameters=[token, student_id], parser_classes=parser_classes,
-                         request_body=StudentSerializer)
-    def put(self, request):
-        student_id = request.data["student_id"]
-        student = Student.objects.get(id=student_id)
-
-        serializer = StudentSerializer(student, data=request.data, many=False)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @swagger_auto_schema(manual_parameters=[token, student_id])
-    def delete(self, request):
-        student_id = request.data["student_id"]
-        student = Student.objects.get(id=student_id)
-        student.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+from django.shortcuts import get_object_or_404
 
 
-# get one student
-class SingleStudentAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    serializer_class = StudentSerializer
+class StudentViewset(viewsets.ViewSet):
 
-    @swagger_auto_schema(manual_parameters=[token, student_id])
-    def get(self, request):
-        student_id = request.query_params.get('student_id')
-        student = Student.objects.get(id=student_id)
-        if student is not None:
-            serializer = StudentSerializer(student, many=False)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response({"message": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
+    def list(self):
+        queryset = Student.objects.all()
+        serializer = StudentSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrive(self, request, pk=None):
+        queryset = Student.objects.all()
+        student = get_object_or_404(queryset, pk)
+        serializer = SponsorSerializer(student)
+        return Response(serializer.data)
 
 
+# class StudentAPIView(APIView, PaginationHandlerMixin):
+#     permission_classes = [IsAuthenticated, IsAdminUser]
+#     pagination_class = BasicPagination
+#     serializer_class = StudentSerializer
+#     parser_classes = (MultiPartParser, FormParser)
+#     type_id = openapi.Parameter('type_student', in_=openapi.IN_QUERY, description="type_student",
+#                                 type=openapi.TYPE_STRING)
+#
+#     @swagger_auto_schema(manual_parameters=[token, type_id, otm_id])
+#     def get(self, request):
+#         type_student = request.query_params.get('type_student')
+#         otm_id = request.query_params.get('otm_id')
+#         print("type_student: ", type_student)
+#         student = Student.objects.all()
+#         if type_student and otm_id is not None:
+#             student = Student.objects.filter(type_student=type_student, OTM=otm_id)
+#         elif type_student is not None:
+#             student = Student.objects.filter(type_student=type_student)
+#         elif otm_id is not None:
+#             student = Student.objects.filter(OTM=otm_id)
+#         page = self.paginate_queryset(student)
+#         serializer = StudentSerializer(page, many=True, context={"request": request})
+#         if page is not None:
+#             serializer = self.get_paginated_response(StudentSerializer(page, many=True).data)
+#         else:
+#             serializer = self.get_paginated_response(self.serializer_class(page, many=True).data)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+#
+#     @swagger_auto_schema(manual_parameters=[token], parser_classes=parser_classes,
+#                          request_body=StudentSerializer)
+#     def post(self, request):
+#         request.data._mutable = True
+#         data = request.data
+#         sponsor = Sponsor.objects.get(id=data['sponsor'])
+#         sponsor_b = sponsor.current_balance
+#         student_b = float(data['current_balance'])
+#         contract_b = float(data['contract_amount'])
+#
+#         # if sponsor has money and student has not enough money
+#         if sponsor_b > 0 and student_b < contract_b:
+#
+#             # if sponsor has not enough money to pay student
+#             if sponsor_b >= contract_b - student_b:
+#                 sponsor.current_balance = sponsor_b - (contract_b - student_b)
+#                 sponsor.save()
+#                 print(student_b + sponsor_b)
+#                 data['current_balance'] = student_b + sponsor_b
+#             elif sponsor_b == 0:
+#                 return Response({"message": "Sponsor has no enough money"}, status=status.HTTP_400_BAD_REQUEST)
+#             elif contract_b <= data['current_balance']:
+#                 return Response({"message": "Student has enough money"}, status=status.HTTP_400_BAD_REQUEST)
+#             else:
+#                 sponsor.current_balance = 0
+#                 data['current_balance'] = student_b + sponsor_b
+#         request.data._mutable = False
+#         serializer = StudentSerializer(data=data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         else:
+#             return Response(serializer.errors)
+#
+#     @swagger_auto_schema(manual_parameters=[token, student_id], parser_classes=parser_classes,
+#                          request_body=StudentSerializer)
+#     def put(self, request):
+#         student_id = request.data["student_id"]
+#         student = Student.objects.get(id=student_id)
+#
+#         serializer = StudentSerializer(student, data=request.data, many=False)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         else:
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#     @swagger_auto_schema(manual_parameters=[token, student_id])
+#     def delete(self, request):
+#         student_id = request.data["student_id"]
+#         student = Student.objects.get(id=student_id)
+#         student.delete()
+#         return Response(status=status.HTTP_204_NO_CONTENT)
+#
+#
+# # get one student
+# class SingleStudentAPIView(APIView):
+#     permission_classes = [IsAuthenticated, IsAdminUser]
+#     serializer_class = StudentSerializer
+#
+#     @swagger_auto_schema(manual_parameters=[token, student_id])
+#     def get(self, request):
+#         student_id = request.query_params.get('student_id')
+#         student = Student.objects.get(id=student_id)
+#         if student is not None:
+#             serializer = StudentSerializer(student, many=False)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         else:
+#             return Response({"message": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
+
+# ======================================================
 # class SponsorAPIView(generics.ListCreateAPIView, MultipleFieldLookupMixin, ):
 #     start_t = openapi.Parameter('start_t', in_=openapi.IN_QUERY, description='start time',
 #                                 type=openapi.TYPE_STRING)
@@ -310,13 +326,31 @@ class SingleOTMAPI(APIView):
 
 
 class MembersStatistic(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    # permission_classes = [IsAuthenticated, IsAdminUser]
     parser_classes = (MultiPartParser, FormParser)
 
     @swagger_auto_schema(manual_parameters=[token])
     def get(self, request):
+        requests.post(url)
         students = Student.objects.all()
         sponsors = Sponsor.objects.all()
         student_count = students.count()
         sponsor_count = sponsors.count()
         return Response({"students": student_count, "sponsors": sponsor_count}, status=status.HTTP_200_OK)
+
+
+from django.db.models.signals import post_save, pre_delete
+from django.contrib.auth.models import User
+from django.dispatch import receiver
+
+# TOKEN = "5556550520:AAGMQLjOce_Jv6BK38yJZkGjNh3rCyQlsJM"
+# chat_id = "1047359359"
+# text="Hello"
+
+import requests
+
+# @receiver(post_save, sender=OTM)
+# def create_otm(sender, instance, created, **kwargs):
+#     if created:
+#         url = "https://api.telegram.org/bot5556550520:AAGMQLjOce_Jv6BK38yJZkGjNh3rCyQlsJM/sendMessage?chat_id=1047359359&text=hi"
+#         requests.post(url)

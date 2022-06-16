@@ -16,3 +16,5 @@ Pillow==9.1.1
 urllib3==1.26.9
 django_filter
 psycopg2-binary
+
+
